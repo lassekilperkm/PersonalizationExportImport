@@ -1,180 +1,180 @@
 codeunit 90102 "Record Functions"
 {
-    internal procedure Json2Rec(JsonObjectPar: JsonObject; RecToConvertPar: Variant): Variant
+    internal procedure Json2Rec(JsonObject: JsonObject; RecToConvert: Variant): Variant
     var
-        RecRefLoc: RecordRef;
+        RecRef: RecordRef;
     begin
-        if not RecToConvertPar.IsRecord then
-            Error(ErrParameterIsNotRecordGlob);
-        RecRefLoc.GetTable(RecToConvertPar);
-        exit(Json2Rec(JsonObjectPar, RecRefLoc.Number()));
+        if not RecToConvert.IsRecord then
+            Error(ErrParameterIsNotRecord);
+        RecRef.GetTable(RecToConvert);
+        exit(Json2Rec(JsonObject, RecRef.Number()));
     end;
 
-    local procedure Json2Rec(JsonObjectPar: JsonObject; TableNoPar: Integer): Variant
+    local procedure Json2Rec(JsonObject: JsonObject; TableNo: Integer): Variant
     var
-        RecRefLoc: RecordRef;
-        FieldRefLoc: FieldRef;
-        FieldHashLoc: Dictionary of [Text, Integer];
-        iLoc: Integer;
-        JsonKeyLoc: Text;
-        JsonTokenLoc: JsonToken;
-        JsonKeyValueLoc: JsonValue;
-        RecVariantLoc: Variant;
+        RecRef: RecordRef;
+        FieldRef: FieldRef;
+        FieldHash: Dictionary of [Text, Integer];
+        i: Integer;
+        JsonKey: Text;
+        JsonToken: JsonToken;
+        JsonKeyValue: JsonValue;
+        RecVariant: Variant;
     begin
-        RecRefLoc.OPEN(TableNoPar);
-        for iLoc := 1 to RecRefLoc.FieldCount() do begin
-            FieldRefLoc := RecRefLoc.FieldIndex(iLoc);
-            FieldHashLoc.Add(GetJsonFieldName(FieldRefLoc), FieldRefLoc.Number);
+        RecRef.OPEN(TableNo);
+        for i := 1 to RecRef.FieldCount() do begin
+            FieldRef := RecRef.FieldIndex(i);
+            FieldHash.Add(GetJsonFieldName(FieldRef), FieldRef.Number);
         end;
-        RecRefLoc.Init();
-        foreach JsonKeyLoc in JsonObjectPar.Keys() do
-            if JsonObjectPar.Get(JsonKeyLoc, JsonTokenLoc) then
-                if JsonTokenLoc.IsValue() then begin
-                    JsonKeyValueLoc := JsonTokenLoc.AsValue();
-                    FieldRefLoc := RecRefLoc.Field(FieldHashLoc.Get(JsonKeyLoc));
-                    AssignValueToFieldRef(FieldRefLoc, JsonKeyValueLoc);
+        RecRef.Init();
+        foreach JsonKey in JsonObject.Keys() do
+            if JsonObject.Get(JsonKey, JsonToken) then
+                if JsonToken.IsValue() then begin
+                    JsonKeyValue := JsonToken.AsValue();
+                    FieldRef := RecRef.Field(FieldHash.Get(JsonKey));
+                    AssignValueToFieldRef(FieldRef, JsonKeyValue);
                 end;
 
-        RecVariantLoc := RecRefLoc;
-        exit(RecVariantLoc);
+        RecVariant := RecRef;
+        exit(RecVariant);
     end;
 
-    procedure Rec2Json(Rec2ConvertPar: Variant): JsonObject
+    procedure Rec2Json(Rec2Convert: Variant): JsonObject
     var
 
-        RecRefLoc: RecordRef;
-        FieldRefLoc: FieldRef;
-        JsonObjectLoc: JsonObject;
-        iLoc: Integer;
+        RecRef: RecordRef;
+        FieldRef: FieldRef;
+        JsonObject: JsonObject;
+        i: Integer;
     begin
-        if not Rec2ConvertPar.IsRecord then
-            error(ErrParameterIsNotRecordGlob);
-        RecRefLoc.GetTable(Rec2ConvertPar);
-        for iLoc := 1 to RecRefLoc.FieldCount() do begin
-            FieldRefLoc := RecRefLoc.FieldIndex(iLoc);
-            case FieldRefLoc.Class of
-                FieldRefLoc.Class::Normal:
-                    JsonObjectLoc.Add(GetJsonFieldName(FieldRefLoc), FieldRef2JsonValue(FieldRefLoc));
-                FieldRefLoc.Class::FlowField:
+        if not Rec2Convert.IsRecord then
+            error(ErrParameterIsNotRecord);
+        RecRef.GetTable(Rec2Convert);
+        for i := 1 to RecRef.FieldCount() do begin
+            FieldRef := RecRef.FieldIndex(i);
+            case FieldRef.Class of
+                FieldRef.Class::Normal:
+                    JsonObject.Add(GetJsonFieldName(FieldRef), FieldRef2JsonValue(FieldRef));
+                FieldRef.Class::FlowField:
                     begin
-                        FieldRefLoc.CalcField();
-                        JsonObjectLoc.Add(GetJsonFieldName(FieldRefLoc), FieldRef2JsonValue(FieldRefLoc));
+                        FieldRef.CalcField();
+                        JsonObject.Add(GetJsonFieldName(FieldRef), FieldRef2JsonValue(FieldRef));
                     end;
             end;
         end;
-        exit(JsonObjectLoc);
+        exit(JsonObject);
     end;
 
-    local procedure FieldRef2JsonValue(FieldRefPar: FieldRef): JsonValue
+    local procedure FieldRef2JsonValue(FieldRef: FieldRef): JsonValue
     var
-        Base64ConvertLoc: Codeunit "Base64 Convert";
-        TempBlobLoc: Codeunit "Temp Blob";
-        InStreamLoc: InStream;
-        JsonValueLoc: JsonValue;
-        DateLoc: Date;
-        DateTimeLoc: DateTime;
-        TimeLoc: Time;
+        Base64Convert: Codeunit "Base64 Convert";
+        TempBlob: Codeunit "Temp Blob";
+        InStream: InStream;
+        JsonValue: JsonValue;
+        Date: Date;
+        DateTime: DateTime;
+        Time: Time;
     begin
-        case FieldRefPar.Type() of
+        case FieldRef.Type() of
             FieldType::Date:
                 begin
-                    DateLoc := FieldRefPar.Value;
-                    JsonValueLoc.SetValue(DateLoc);
+                    Date := FieldRef.Value;
+                    JsonValue.SetValue(Date);
                 end;
             FieldType::Time:
                 begin
-                    TimeLoc := FieldRefPar.Value;
-                    JsonValueLoc.SetValue(TimeLoc);
+                    Time := FieldRef.Value;
+                    JsonValue.SetValue(Time);
                 end;
             FieldType::DateTime:
                 begin
-                    DateTimeLoc := FieldRefPar.Value;
-                    JsonValueLoc.SetValue(DateTimeLoc);
+                    DateTime := FieldRef.Value;
+                    JsonValue.SetValue(DateTime);
                 end;
             FieldType::Blob:
                 begin
-                    FieldRefPar.CalcField();
-                    TempBlobLoc.FromFieldRef(FieldRefPar);
-                    TempBlobLoc.CreateInStream(InStreamLoc);
-                    JsonValueLoc.SetValue(Base64ConvertLoc.ToBase64(InStreamLoc));
+                    FieldRef.CalcField();
+                    TempBlob.FromFieldRef(FieldRef);
+                    TempBlob.CreateInStream(InStream);
+                    JsonValue.SetValue(Base64Convert.ToBase64(InStream));
                 end;
             FieldType::Media:
                 exit;
             else
-                JsonValueLoc.SetValue(Format(FieldRefPar.Value, 0, 9));
+                JsonValue.SetValue(Format(FieldRef.Value, 0, 9));
         end;
-        exit(JsonValueLoc);
+        exit(JsonValue);
     end;
 
-    local procedure GetJsonFieldName(FieldRefPar: FieldRef): Text
+    local procedure GetJsonFieldName(FieldRef: FieldRef): Text
     var
-        NameLoc: Text;
-        iLoc: Integer;
+        Name: Text;
+        i: Integer;
     begin
-        NameLoc := FieldRefPar.Name();
-        for iLoc := 1 to Strlen(NameLoc) do
-            if NameLoc[iLoc] < '0' then
-                NameLoc[iLoc] := '_';
+        Name := FieldRef.Name();
+        for i := 1 to Strlen(Name) do
+            if Name[i] < '0' then
+                Name[i] := '_';
 
-        exit(NameLoc.Replace('__', '_').TrimEnd('_').TrimStart('_'));
+        exit(Name.Replace('__', '_').TrimEnd('_').TrimStart('_'));
     end;
 
-    local procedure AssignValueToFieldRef(var FieldRefVar: FieldRef; JsonKeyValuePar: JsonValue)
+    local procedure AssignValueToFieldRef(var FieldRef: FieldRef; JsonKeyValue: JsonValue)
     var
-        Base64ConvertLoc: Codeunit "Base64 Convert";
-        TempBlobLoc: Codeunit "Temp Blob";
-        RecordIdLoc: RecordId;
-        OutStreamLoc: OutStream;
-        GuidLoc: Guid;
+        Base64Convert: Codeunit "Base64 Convert";
+        TempBlob: Codeunit "Temp Blob";
+        RecordId: RecordId;
+        OutStream: OutStream;
+        Guid: Guid;
     begin
-        case FieldRefVar.Type() of
+        case FieldRef.Type() of
             FieldType::Code,
             FieldType::Text,
             FieldType::DateFormula:
-                FieldRefVar.Value := JsonKeyValuePar.AsText();
+                FieldRef.Value := JsonKeyValue.AsText();
             FieldType::Integer:
-                FieldRefVar.Value := JsonKeyValuePar.AsInteger();
+                FieldRef.Value := JsonKeyValue.AsInteger();
             FieldType::Date:
-                FieldRefVar.Value := JsonKeyValuePar.AsDate();
+                FieldRef.Value := JsonKeyValue.AsDate();
             FieldType::Time:
-                FieldRefVar.Value := JsonKeyValuePar.AsTime();
+                FieldRef.Value := JsonKeyValue.AsTime();
             FieldType::DateTime:
-                FieldRefVar.Value := JsonKeyValuePar.AsDateTime();
+                FieldRef.Value := JsonKeyValue.AsDateTime();
             FieldType::Decimal:
-                FieldRefVar.Value := JsonKeyValuePar.AsDecimal();
+                FieldRef.Value := JsonKeyValue.AsDecimal();
             FieldType::Duration:
-                FieldRefVar.Value := JsonKeyValuePar.AsDuration();
+                FieldRef.Value := JsonKeyValue.AsDuration();
             FieldType::Boolean:
-                FieldRefVar.Value := JsonKeyValuePar.AsBoolean();
+                FieldRef.Value := JsonKeyValue.AsBoolean();
             FieldType::Option:
-                FieldRefVar.Value := JsonKeyValuePar.AsOption();
+                FieldRef.Value := JsonKeyValue.AsOption();
             FieldType::BigInteger:
-                FieldRefVar.Value := JsonKeyValuePar.AsBigInteger();
+                FieldRef.Value := JsonKeyValue.AsBigInteger();
             FieldType::RecordId:
                 begin
-                    Evaluate(RecordIdLoc, JsonKeyValuePar.AsText());
-                    FieldRefVar.Value := RecordIdLoc;
+                    Evaluate(RecordId, JsonKeyValue.AsText());
+                    FieldRef.Value := RecordId;
                 end;
             FieldType::Guid:
                 begin
-                    Evaluate(GuidLoc, JsonKeyValuePar.AsText());
-                    FieldRefVar.Value := GuidLoc;
+                    Evaluate(Guid, JsonKeyValue.AsText());
+                    FieldRef.Value := Guid;
                 end;
             FieldType::Blob:
                 begin
-                    FieldRefVar.CalcField();
-                    TempBlobLoc.CreateOutStream(OutStreamLoc, TextEncoding::Windows);
-                    Base64ConvertLoc.FromBase64(JsonKeyValuePar.AsText(), OutStreamLoc);
-                    TempBlobLoc.ToFieldRef(FieldRefVar);
+                    FieldRef.CalcField();
+                    TempBlob.CreateOutStream(OutStream, TextEncoding::Windows);
+                    Base64Convert.FromBase64(JsonKeyValue.AsText(), OutStream);
+                    TempBlob.ToFieldRef(FieldRef);
                 end;
             FieldType::Media:
                 exit;
             else
-                error(ErrNotSupportedFieldTypeGlob, FieldRefVar.Type());
+                error(ErrNotSupportedFieldType, FieldRef.Type());
         end;
     end;
 
     var
-        ErrNotSupportedFieldTypeGlob: Label '%1 is not a supported field type';
-        ErrParameterIsNotRecordGlob: Label 'Parameter Rec is not a record';
+        ErrNotSupportedFieldType: Label '%1 is not a supported field type';
+        ErrParameterIsNotRecord: Label 'Parameter Rec is not a record';
 }
